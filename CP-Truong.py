@@ -1,49 +1,55 @@
 import numpy as np
 import time
 from ortools.sat.python import cp_model
-from ortools.linear_solver import pywraplp
 
+
+# Có N hành khách 1, 2, …, N và M gói hàng N+1,N+ 2, …, N+M. Hành khách (người) (hoặc gói hàng) i có điểm đón là i và điểm trả là i+ N + M (i = 1,2,…,2N+2M). 
+# Mỗi gói hàng i có khối lượng qi (i=N+1,…,N+M)
+# Có K taxi 1,…,K xuất phát từ điểm 0. Mỗi xe taxi k có thể vận chuyển cùng 1 lúc 1 hành khách và tối đa Qk khối lượng hàng (xếp vào cốp xe) (k=1,…,K)
+# Biết rằng d(i,j) là khoảng cách từ điểm i đến điểm j (I,j=0,…,2N+2M)
+# Hãy tính toán phương án vận chuyển sao cho tổng quãng đường di chuyển của các xe ngắn nhất
 
 start = time.time()
-with open('data.txt', 'r') as file:
+with open('project/data.txt', 'r') as file:
     m,n,k = [int(x) for x in file.readline().split()]
     q = [int(x) for x in file.readline().split()]
     Q = [int(x) for x in file.readline().split()]
     d = [[int(i) for i in file.readline().split()] for j in range(2*m+2*n+1)]
     nm2 = 2*m+2*n
     
-def expend_start(n, d):
+def expend_start(number, d):
     n_expend = len(d) + k*2
     
     newd = np.zeros((n_expend, n_expend), dtype=int)
-    for i in range(1,n+1):
-        for j in range(1,n+1):
+    for i in range(1,number+1):
+        for j in range(1,number+1):
             newd[i][j] = d[i][j]
     
-    for i in range(n+1, n_expend):
-        for j in range(1, n+1):        
+    for i in range(number+1, n_expend):
+        for j in range(1, number+1):        
             newd[i][j] = d[0][j]
             
-    for i in range(1, n+1):
-        for j in range(n+1, n_expend):        
+    for i in range(1, number+1):
+        for j in range(number+1, n_expend):        
             newd[i][j] = d[i][0]
         
     return n_expend, newd
 
-N, D = expend_start(2*(n+m),d)
+N, D = expend_start(nm2, d)
+q.insert(0,0)
 
 # small test
-n = 2
+n = 3
 m = 3
 nm2 = 2*n+2*m
 N = nm2+ 2*k +1
-q.insert(0,0)
     
 model = cp_model.CpModel()
-x1 = [[model.NewBoolVar('b[{},{}]'.format(j,i)) for i in range(N)] for j in range(nm2+k+1)] # x[i][i] == 1 => có đường từ i ->j
+x1 = [[model.NewBoolVar('x1[{},{}]'.format(j,i)) for i in range(N)] for j in range(nm2+k+1)] # x[i][i] == 1 <=> có đường từ i ->j
 
 l = [model.NewIntVar(0, 1000, 'l[{}]'.format(i)) for i in range(N)]
 w = [model.NewIntVar(0, max(Q), 'w[{}]'.format(i)) for i in range(N)]   # weight
+max_w = [model.NewIntVar(0, max(Q), 'max_w[{}]'.format(i)) for i in range(N)]        # max weight
 p = [model.NewBoolVar('p[{}]'.format(i)) for i in range(N)]        # person
 mark = [model.NewIntVar(1, k, 'mark[{}]'.format(i)) for i in range(N)]  # mark which car k
 obj = model.NewIntVar(0, 10000, 'obj')
@@ -52,6 +58,7 @@ for s in range(nm2+1, nm2+k+1):
     model.Add(l[s] == 0)
     model.Add(w[s] == 0)
     model.Add(p[s] == 0)
+    model.Add(max_w[s] == Q[s-nm2-1])
     # model.Add(p[s+k] == 0)
     model.Add(mark[s] == s-nm2)   # điểm đầu và điểm cuối cùng tuyến
     model.Add(mark[s+k] == s-nm2)
@@ -82,6 +89,7 @@ for i in range(nm2+1, nm2+k+1):
 for i in range(1,nm2+k+1): 
     for j in range(1,N):
         model.Add(mark[j] == mark[i]).OnlyEnforceIf(x1[i][j])
+        model.Add(max_w[j] == max_w[i]).OnlyEnforceIf(x1[i][j])
         model.Add(l[j] == l[i] + D[i][j]).OnlyEnforceIf(x1[i][j])
         if j <= n:
             model.Add(p[j] == p[i]+1).OnlyEnforceIf(x1[i][j])
@@ -105,14 +113,8 @@ for i in range(n+m+1, nm2+1):
     model.Add(l[i] > l[i-n-m])
         
 # ĐK trọng tải max
-for i in range(n+1, n+m+1):
-    model.Add(w[i] <= 10)
-
-# truong hợp tổng quát max w < Q
-# for i in range(n+k+1):
-    # for j in range(1, k+1):
-    #     model.Add(b_mark[j][i] == mark[i]==j)
-    #     model.Add(w[i] <= Q[j-1]).OnlyEnforceIf(b_mark[j][i])
+for i in range(1,nm2+1):
+    model.Add(w[i] <= max_w[i])
     
 
 model.Add(obj==sum([l[i] for i in range(nm2+k+1, N)]))
@@ -120,6 +122,8 @@ model.Minimize(obj)
 
 solver = cp_model.CpSolver()
 status = solver.Solve(model)
+
+
 if status == cp_model.OPTIMAL:
     print('objective: ', solver.ObjectiveValue())
     # for i in range(nm2+k+1):
