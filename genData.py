@@ -1,44 +1,43 @@
 import random
-import math
+import numpy as np
 
-# n,m,k
-n=3
-m=4  
-K=2
+print('nhap n,m,k: ')
+n=int(input())
+m=int(input())
+K=int(input())
+
 # const
-init_random=10
-min_q=4        # min max mỗi điểm nhận/ trả hàng 
-max_q=6
-min_Q=10       # min max tải trọng xe 
-max_Q=10
+min_q= n+m+random.randint(-4,-2)     # min max mỗi điểm nhận/ trả hàng 
+max_q= n+m+random.randint(2, 5) 
+min_Q= min_q * 2 + random.randint(-2,2)  
+max_Q= max_q * 2 + random.randint(-2,2)
+R = n*2+m*2+random.randint(0,5)
 
+def distance(point1, point2):
+	return int(np.linalg.norm(point1-point2))
 
-# bị 3 điểm thẳng hàng
-def distance(i1, j1, i2, j2):
-	return int(math.sqrt((i1-i2)*(i1-i2)+(j1-j2)*(j1-j2)))+1
+point = [np.array([0,0]) ]
+while len(point) != 2*n+2*m+1:
+    p = np.array([random.uniform(2, R), random.uniform(2, R)])
+    verify = 0 # xac nhan các điểm không quá gần
+    for p1 in point:
+        if distance(p, p1) < 1:
+            verify += 1
+    if verify == 0: 
+        point.append(p)
 
-# sinh các điểm trên vòng tròn để không có 3 điểm nào thẳng hàng
-point=[[init_random*math.cos(i*2*math.pi/(2*n+1)), init_random*math.sin(i*2*math.pi/(2*n+1))] for i in range(2*n+2*m+1)] 
-# đảo ngẫu nhiên vị trí các điểm trong dãy điểm
-for i in range(n*2):
-	tmp=random.randint(0, len(point)-1)
-	remove=point[tmp]
-	point.remove(point[tmp])
-	point.append(remove)
-
-# print(point)
-
-c=[[0 for i in range(2*n+2*m+1)] for j in range(2*n+2*m+1)]
+d=[[0 for i in range(2*n+2*m+1)] for j in range(2*n+2*m+1)]
 for i in range(2*n+2*m+1):
 	for j in range(2*n+2*m+1):
 		if j!=i:
-			c[i][j]=distance(point[i][0], point[i][1], point[j][0], point[j][1])
-# print(c)
-q=[random.randint(min_q, max_q) for i in range(m) ]
-Q=[random.randint(min_Q, max_Q) for i in range(K) ]
-with open('data_'+str(n)+'_'+str(m)+'_'+str(K)+'.txt', 'w') as f:
+			d[i][j]=distance(point[i], point[j]) 
+q=[random.randint(min_q, max_q+1) for i in range(m) ]
+Q=[random.randint(min_Q, max_Q+1) for i in range(K) ]
+
+
+with open('project/data_{}_{}_{}.txt'.format(n,m,K), 'w') as f:
 	f.writelines(str(n)+ ' '+str(m)+ ' '+str(K)+' '+'\n')
-	for i in range(K):
+	for i in range(m):
 		f.write(str(q[i])+' ')
 	f.write('\n')
 	for i in range(K):
@@ -46,5 +45,7 @@ with open('data_'+str(n)+'_'+str(m)+'_'+str(K)+'.txt', 'w') as f:
 	f.write('\n')
 	for i in range(2*n+2*m+1):
 		for j in range(2*n+2*m+1):
-			f.write(str(c[i][j])+' ')
+			f.write(str(d[i][j])+' ')
 		f.write('\n')
+
+print('done')
