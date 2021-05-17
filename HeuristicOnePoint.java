@@ -369,7 +369,7 @@ public class HeuristicOnePoint {
                     + ", cost = " + obj.getValue()+ "");
             it++;
         }
-        return obj.getValue() * Math.signum(CS.violations());
+        return obj.getValue() * (1-Math.signum(CS.violations()));
     }
 
     public static void testN(HeuristicOnePoint A, int numberTry){
@@ -391,13 +391,12 @@ public class HeuristicOnePoint {
     public static void main(String[] args) {
         HeuristicOnePoint A = new HeuristicOnePoint();
 
-        A.readData("src/optimal_schedular/data_big.txt");
+        A.readData("src/optimal_schedular/data.txt");
         A.printReadData();
         testN(A, 10);
 
 //        A.mapping();
 //        A.stateModel2();
 //        A.search(100);
-
     }
 }
