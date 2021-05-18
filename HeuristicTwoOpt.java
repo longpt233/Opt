@@ -1,5 +1,8 @@
 package optimal_schedular;
 
+package test;
+
+
 import java.io.File;
 import java.util.*;
 
@@ -7,6 +10,7 @@ import localsearch.domainspecific.vehiclerouting.vrp.ConstraintSystemVR;
 import localsearch.domainspecific.vehiclerouting.vrp.IFunctionVR;
 import localsearch.domainspecific.vehiclerouting.vrp.VRManager;
 import localsearch.domainspecific.vehiclerouting.vrp.VarRoutesVR;
+import localsearch.domainspecific.vehiclerouting.vrp.constraints.Implicate;
 import localsearch.domainspecific.vehiclerouting.vrp.constraints.eq.Eq;
 import localsearch.domainspecific.vehiclerouting.vrp.constraints.leq.Leq;
 import localsearch.domainspecific.vehiclerouting.vrp.entities.ArcWeightsManager;
@@ -21,31 +25,23 @@ import localsearch.domainspecific.vehiclerouting.vrp.functions.TotalCostVR;
 import localsearch.domainspecific.vehiclerouting.vrp.invariants.AccumulatedWeightEdgesVR;
 import localsearch.domainspecific.vehiclerouting.vrp.invariants.AccumulatedWeightNodesVR;
 
-public class HeuristicTwoOpt {
+public class HeuristicOnePoint {
     int N, M, K; // N khach M goi hang
-    int[] q; // khoi luong hang tai diem
-    int[] Q; // khoi luong max cua xe
-    int[][] d; // distance
+    int[] q;	 // khoi luong hang tai diem
+    int[] Q;	 // khoi luong max cua xe
+    int[][] d; 	 // distance
 
     ArrayList<Point> start;
     ArrayList<Point> end;
-    ArrayList<Point> clPoint; // tat ca point nhung trong so khac
-    ArrayList<Point> pkPoint;
-    ArrayList<Point> clientPoints;
-    ArrayList<Point> personPoints;
-    ArrayList<Point> packPoints;
-    ArrayList<Point> personOutPoints;
-    ArrayList<Point> packOutPoints;
-    ArrayList<Point> allPersonPoints;
-    ArrayList<Point> allPackPoints;
-    ArrayList<Point> servicePoints; // tong cac diem can phuc vu N+M
-    ArrayList<Point> allPoints; // tinh ca 2 diem gia
-
+    ArrayList<Point> clientPoints;    	// tat ca cac diem phuc vu 2N+2M = all point \ 2K  diem 0 
+    
+    
+    ArrayList<Point> allPoints;        	// tinh ca 2 diem gia
+    
     NodeWeightsManager clMng;
     NodeWeightsManager pkMng;
-    ArcWeightsManager weightsMng; // luu tru trong so tren canh noi giua cac point
-    NodeWeightsManager packsMng; // luu tru trong so tren cac point
-    NodeWeightsManager clientsMng; // quan li so luong nguoi tai diem
+    ArcWeightsManager weightsMng;    	// luu tru trong so tren canh noi giua cac point
+
     HashMap<Point, Integer> mapPoint2ID;
     HashMap<Integer, Point> reverseMapPoint2ID;
 
@@ -55,14 +51,34 @@ public class HeuristicTwoOpt {
     ConstraintSystemVR CS;
     LexMultiFunctions F;
     IFunctionVR obj;
-    IFunctionVR[] d1; // danh cho thiet lap rang buoc ve phai tra het hang
+    IFunctionVR[] d1; 
     IFunctionVR[] d2; // danh co thiet lap rang buoc cho tat ca cac diem
     IFunctionVR[] d3; // danh co thiet lap rang buoc ve truoc sau
     IFunctionVR[] d4; // danh co thiet lap rang buoc dung diem lay va tra
     IFunctionVR[] cost; // cost[k] la chieu dai cua route thu k
     Random R = new Random();
+    
+    
 
-    public void readData(String fn) {
+    
+    public ConstraintSystemVR getCS() {
+		return CS;
+	}
+
+	public IFunctionVR getObj() {
+		return obj;
+	}
+
+
+	public IFunctionVR[] getCost() {
+		return cost;
+	}
+
+	public VarRoutesVR getXR() {
+		return XR;
+	}
+
+	public void readData(String fn) {
         try {
             Scanner in = new Scanner(new File(fn));
             N = in.nextInt();
@@ -111,19 +127,11 @@ public class HeuristicTwoOpt {
     public void mapping() {
         start = new ArrayList<Point>();
         end = new ArrayList<Point>();
-        clPoint = new ArrayList<Point>();
-        pkPoint = new ArrayList<Point>();
         clientPoints = new ArrayList<Point>();
-        personPoints = new ArrayList<Point>();
-        packPoints = new ArrayList<Point>();
-        personOutPoints = new ArrayList<Point>();
-        packOutPoints = new ArrayList<Point>();
-        servicePoints = new ArrayList<Point>();
         allPoints = new ArrayList<Point>();
         mapPoint2ID = new HashMap<Point, Integer>();
-        reverseMapPoint2ID = new HashMap<Integer, Point>();
-        allPersonPoints = new ArrayList<Point>();
-        allPackPoints = new ArrayList<Point>();
+        reverseMapPoint2ID = new HashMap< Integer,Point>();
+
         // khoi tao cac diem bat dau va ket thuc cua cac xe (route)
         for (int k = 1; k <= K; k++) {
             // them 2 k diem gia
@@ -140,60 +148,21 @@ public class HeuristicTwoOpt {
             reverseMapPoint2ID.put(0, t);
         }
 
-        // client Point
-        for (int i = 1; i <= N; i++) {
+
+        for (int i = 1; i <= 2 * N + 2 * M; i++) {
             Point p = new Point(i);
-            personPoints.add(p);
-            allPoints.add(p);
-            servicePoints.add(p);
-            mapPoint2ID.put(p, i);
-            reverseMapPoint2ID.put(i, p);
-        }
-        // pack point
-        for (int i = N + 1; i <= N + M; i++) {
-            Point p = new Point(i);
-            packPoints.add(p);
-            allPoints.add(p);
-            servicePoints.add(p);
-            mapPoint2ID.put(p, i);
-            reverseMapPoint2ID.put(i, p);
-        }
-        // them cac diem tra khach
-        for (int i = N + M + 1; i <= 2 * N + M; i++) {
-            Point p = new Point(i);
-            personOutPoints.add(p);
+            clientPoints.add(p);
             allPoints.add(p);
             mapPoint2ID.put(p, i);
-            reverseMapPoint2ID.put(i, p);
-        }
-        // diem tra hang
-        for (int i = 2 * N + M + 1; i <= 2 * N + 2 * M; i++) {
-            Point p = new Point(i);
-            packOutPoints.add(p);
-            allPoints.add(p);
-            mapPoint2ID.put(p, i);
-            reverseMapPoint2ID.put(i, p);
+            reverseMapPoint2ID.put(i,p);
         }
 
-        allPersonPoints.addAll(personPoints);
-        allPersonPoints.addAll(personOutPoints);
-        allPackPoints.addAll(packPoints);
-        allPackPoints.addAll(packOutPoints);
-
-        clientPoints.addAll(allPersonPoints);
-        clientPoints.addAll(allPackPoints);
-
-        clPoint.addAll(allPoints);
-        pkPoint.addAll(allPoints);
-
-        clMng = new NodeWeightsManager(clPoint);
-        pkMng = new NodeWeightsManager(pkPoint);
-//        clientsMng = new NodeWeightsManager(allPersonPoints);
-//        packsMng = new NodeWeightsManager(allPackPoints);
+        clMng = new NodeWeightsManager(allPoints);
+        pkMng = new NodeWeightsManager(allPoints);
         weightsMng = new ArcWeightsManager(allPoints);
 
         // set trong so duong di
-        for (Point p : allPoints) {
+        for (Point p : allPoints){
             for (Point q : allPoints) {
                 int ip = mapPoint2ID.get(p);
                 int iq = mapPoint2ID.get(q);
@@ -202,28 +171,26 @@ public class HeuristicTwoOpt {
         }
 
         // set trong so tai moi node (node person hoac pack)
-        // rang buoc tra hang voi khach thi tru di
-        for (Point p : allPoints) {
-            // lay ra so thuw tu tu 1.. 2*N+2*M+2K
+        // rang buoc tra hang voi khach thi trong so am di, khong co lien quan thi trong so = 0
+        for (Point p : clientPoints){
             clMng.setWeight(p, 0);
             pkMng.setWeight(p, 0);
             int tmp = mapPoint2ID.get(p);
-            if (tmp == 0) continue;
             if (tmp <= N) {
-                clMng.setWeight(p, 1);
+                clMng.setWeight(p, 1);        
             } else if (tmp <= N + M) {
-                pkMng.setWeight(p, q[tmp - N]);
+                pkMng.setWeight(p, q[tmp-N]);
             } else if (tmp <= 2 * N + M) {
                 clMng.setWeight(p, -1);
             } else if (tmp <= 2 * N + 2 * M) {
-                pkMng.setWeight(p, -q[tmp - N - M - N]);
+                pkMng.setWeight(p, -q[tmp-N-M-N]);
             }
         }
     }
+
     public void stateModel2(){
         mgr = new VRManager();
         XR = new VarRoutesVR(mgr);
-        // them 1 route dau cuoi vao phuong an (s --> t)
         // cac phuong an se dc dem tu 0
         for (int i = 0; i < start.size(); i++) {
             Point s = start.get(i);
@@ -231,11 +198,8 @@ public class HeuristicTwoOpt {
             XR.addRoute(s, t);
         }
         // add co the di qua
-        for (Point p : allPersonPoints) {
+        for (Point p : clientPoints) {
             XR.addClientPoint(p);// khai bao XR co the se di qua diem p
-        }
-        for (Point p : allPackPoints) {
-            XR.addClientPoint(p);// co the o day da xet la khogn lap lai roi
         }
         // thiet lap rang buoc
         CS = new ConstraintSystemVR(mgr);
@@ -244,23 +208,38 @@ public class HeuristicTwoOpt {
         AccumulatedWeightNodesVR packAccum = new AccumulatedWeightNodesVR(XR, pkMng);
         AccumulatedWeightEdgesVR weightAccum = new AccumulatedWeightEdgesVR(XR, weightsMng);
 
-        // xet tatr ca cac diem thi phai thoa man yeu cau rang buoc trai ttrong va so
-        // nguoi
         d1 = new IFunctionVR[2 * N + 2 * M + 2 * K + 2];
         d2 = new IFunctionVR[2 * N + 2 * M + 2 * K + 2];
         for (Point p : allPoints) {
-            // lay ra so thuw tu tu 1.. 2*N+2*M+2K
             int tmp = mapPoint2ID.get(p);
             if(tmp == 0) continue;
             // rang buoc tai trong
-            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+//            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+
             // trong luong toi da cua xe ma diem p thuoc ve
-//            int qi= Q[XR.route(p)+1];
-//            CS.post(new Leq(d2[tmp], qi));
-            CS.post(new Leq(d2[tmp], 10));
+            for(int k=0;k<K;k++) {
+                
+                d1[tmp]=new RouteIndex(XR, p);
+                  // neu p thuoc k 
+                
+                
+                d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+                
+                
+                CS.post(new Implicate(new Eq(d1[tmp], k),new Leq(d2[tmp], Q[k])));
+
+            }
+            // cho nay dang loi nha 
+           
+//            int qi= Q[];
+////            CS.post(new Leq(d2[tmp], qi));
+//            CS.post(new Implicate(d2[tmp], qi));
+////            CS.post(new Leq(0, d2[tmp]));
+
             // rang buoc so nguoi
             d2[tmp] = new AccumulatedNodeWeightsOnPathVR(personAccum, p);
             CS.post(new Leq(d2[tmp], 1));
+//            CS.post(new Leq(0, d2[tmp]));
         }
 
         // xet tat ca cac diem thi phai co diem nhan roi thi moi duoc tra
@@ -291,7 +270,6 @@ public class HeuristicTwoOpt {
             }
         }
 
-        // tinh cai nay de ti doc lai
         cost = new IFunctionVR[K];
         for (int k = 1; k <= K; k++) {
             Point tk = XR.endPoint(k);
@@ -307,18 +285,13 @@ public class HeuristicTwoOpt {
         for (int k = 1; k <= XR.getNbRoutes(); k++) {
             listPoints.add(XR.startPoint(k));
         }
-        for (Point p : allPersonPoints) {
+        for (Point p : clientPoints) {
             Point x = listPoints.get(R.nextInt(listPoints.size()));
             mgr.performAddOnePoint(p, x);
-            System.out.println(XR.toString() + "violations = " + CS.violations() + ", cost = " + obj.getValue());
             listPoints.add(p);
         }
-        for (Point p : allPackPoints) {
-            Point x = listPoints.get(R.nextInt(listPoints.size()));
-            mgr.performAddOnePoint(p, x);
-            System.out.println(XR.toString() + "violations = " + CS.violations() + ", cost = " + obj.getValue());
-            listPoints.add(p);
-        }
+//        System.out.println("Init Router \n"+XR.toString() + "violations = " + CS.violations() + ", cost = " + obj.getValue());
+
     }
 
     class Move {
@@ -334,17 +307,13 @@ public class HeuristicTwoOpt {
         cand.clear();
         int minDeltaC = Integer.MAX_VALUE;
         double minDeltaF = minDeltaC;
-//        clientPoints.Add()
         for (int k = 1; k <= XR.getNbRoutes(); k++) {
             for (Point y = XR.next(XR.startPoint(k)); y != XR.endPoint(k); y = XR.next(y)) {
-                for (int k1 = 1; k1 <= XR.getNbRoutes(); k1++){
-                    if (k1 == k)
-                        continue;
-                    for (Point x = XR.next(XR.startPoint(k1)); x != XR.endPoint(k1); x = XR.next(x)) {
-                        System.out.print("(" + x.getID() +","+ y.getID()+")");
-                        int deltaC = CS.evaluateTwoOptMove1(x,y);
-                        double deltaF = obj.evaluateTwoOptMove1(x, y);
-                        System.out.print(deltaC + "_" + (int)deltaF + " |");
+                for (Point x : clientPoints)
+                    if (x != y && x != XR.next(y)) {
+                        int deltaC = CS.evaluateOnePointMove(x, y);
+                        double deltaF = obj.evaluateOnePointMove(x, y);
+//                        System.out.print(deltaC + "_" + (int)deltaF + " |");
                         if (!(deltaC < 0 || (deltaC == 0 && deltaF < 0)))
                             continue;
                         if (deltaC < minDeltaC || (deltaC == minDeltaC && deltaF < minDeltaF)) {
@@ -355,54 +324,57 @@ public class HeuristicTwoOpt {
                         } else if (deltaC == minDeltaC && deltaF == minDeltaF)
                             cand.add(new Move(x, y));
                     }
-                }
             }
         }
     }
 
-    public double search(int maxIter) {
+    public void search(int maxIter) {
         initialSolution();
-        System.out.println("\n");
         int it = 0;
         ArrayList<Move> cand = new ArrayList<Move>();
         while (it < maxIter) {
             exploreNeighborhood(cand);
             if (cand.size() <= 0) {
-                System.out.println("Reach local optimum");
+//                System.out.println("Reach local optimum");
                 break;
             }
             Move m = cand.get(R.nextInt(cand.size()));
-            mgr.performTwoOptMove1(m.x, m.y);
-            System.out.println("\nStep " + it + ", XR   " + m.x.getID() + ","+m.y.getID() +"\n" + XR.toString() + "violations = " + CS.violations()
-                    + ", cost = " + obj.getValue()+ "");
+            mgr.performOnePointMove(m.x, m.y);
+//            System.out.println("\nStep " + it + ", XR   " + m.x.getID() + ","+m.y.getID() +"\n" + XR.toString() + "violations = " + CS.violations()
+//            + ", cost = " + obj.getValue()+ "");
             it++;
         }
-        return obj.getValue();
-//        return (double)CS.violations();
+        
+    
+
     }
 
 
     public static void main(String[] args) {
-        HeuristicTwoOpt A = new HeuristicTwoOpt();
+        HeuristicOnePoint A = new HeuristicOnePoint();
 
-        A.readData("src/optimal_schedular/data.txt");
-        A.printReadData();
-
-        A.mapping();
-        A.stateModel2();
-        A.search(100);
+        A.readData("data.txt");
         double best = Integer.MAX_VALUE;
-//        best = 0;
-//        int numberTry = new Scanner(System.in).nextInt();
-//        int numberTry = 20;
-//        for (int i = 0; i < numberTry; i++) {
-//            A.mapping();
-//            A.stateModel2();
-//            double cost = A.search(100);
-//            System.out.println();
-//            if (best > cost)
-//                best = cost;
-//        }
-//        System.out.println("\nbest : " + best);
+        int numberTry = 600;
+        List<VarRoutesVR> resRoutesVR=new ArrayList<>();
+        for (int i = 0; i < numberTry; i++) {
+            A.mapping();
+            A.stateModel2();
+            A.search(100);
+            double cost = A.getObj().getValue();
+            int vio =A.getCS().violations();
+//            System.out.println("cost=" +cost+" violation="+vio );
+          
+            if (best > cost && vio==0) {
+            	resRoutesVR.clear();
+            	System.out.println("update");
+                best = cost;
+                resRoutesVR.add(A.getXR());
+            }else if (best==cost){
+            	resRoutesVR.add(A.getXR());
+            }
+        }
+        System.out.println("\nbest : " + best);
+        resRoutesVR.stream().forEach(e-> System.out.println(e.toString()));
     }
 }
