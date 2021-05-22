@@ -1,7 +1,9 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
+import time
 
-with open('data.txt', 'r') as file:
+start_time = time.time()
+with open('project/data_3_4_2.txt', 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
 
     q = [0]*(2*(M+N)+2*K+1)
@@ -234,3 +236,4 @@ for k in range(1, K+1):
             print('{} -> '.format(cur_index), end="")
             cur_index = rs[cur_index]
     print('0')
+print(time.time() - start_time)

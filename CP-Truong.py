@@ -11,7 +11,7 @@ from ortools.sat.python import cp_model
 
 
 start = time.time()
-with open('project/data_2_3_2.txt', 'r') as file:
+with open('project/data.txt', 'r') as file:
     n,m,k = [int(x) for x in file.readline().split()]
     q_data = [int(x) for x in file.readline().split()]
     Q = [int(x) for x in file.readline().split()]
@@ -107,11 +107,11 @@ for i in range(1,nm2+k+1):
         for j in P2+P4+[i+n+m]:
             A[i].append(j)
     elif i <= n+m:
-        for j in P1+P2+P3+P4+E:
+        for j in P1+P2+P3+P4:
             if i != j:
                 A[i].append(j)
     elif i <= n+m+n:
-        for j in P1+P2+P4:
+        for j in P1+P2+P4+E:
             if j != i-n-m:
                 A[i].append(j)
     elif i <= nm2:
@@ -121,7 +121,10 @@ for i in range(1,nm2+k+1):
     else :
         for j in P1+P2+[i+k]:
             A[i].append(j)
-    
+            
+print(n,m,k)
+# print(client)
+# print(q)
 # for i in range(nm2+k+1):
 #     print(i, A[i])
 
@@ -199,6 +202,7 @@ if status == cp_model.OPTIMAL:
                         print(t1+k)
                         go = False
                     break
+
 else :
     print('not found')
     
