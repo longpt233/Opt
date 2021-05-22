@@ -1,224 +1,221 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
 
-P = 3
-N = 4
-K = 2
-d = [[0, 4, 5, 2, 4, 4, 3, 3, 4, 3, 5, 6, 2, 2, 9],
-     [3, 0, 5, 2, 4, 2, 3, 3, 4, 3, 5, 6, 7, 2, 9],
-     [3, 4, 0, 2, 1, 4, 3, 3, 4, 3, 5, 6, 1, 2, 9],
-     [3, 4, 5, 0, 4, 2, 2, 3, 4, 3, 5, 6, 7, 3, 8],
-     [3, 7, 1, 2, 0, 4, 3, 3, 4, 2, 5, 5, 7, 2, 9],
-     [3, 4, 5, 2, 4, 0, 3, 6, 4, 3, 5, 4, 7, 2, 4],
-     [3, 4, 1, 2, 4, 4, 0, 3, 4, 3, 5, 6, 7, 2, 9],
-     [3, 3, 5, 3, 7, 1, 3, 0, 4, 8, 5, 5, 4, 2, 3],
-     [3, 4, 2, 2, 4, 4, 5, 3, 0, 3, 5, 6, 7, 2, 9],
-     [1, 4, 5, 4, 4, 1, 3, 1, 4, 0, 5, 9, 8, 2, 3],
-     [3, 4, 2, 2, 5, 4, 3, 3, 4, 3, 0, 6, 7, 2, 9],
-     [2, 5, 5, 1, 4, 5, 7, 1, 4, 3, 5, 0, 7, 2, 3],
-     [3, 4, 5, 2, 4, 4, 3, 3, 4, 3, 5, 6, 0, 2, 9],
-     [2, 4, 5, 1, 6, 8, 3, 8, 4, 3, 5, 6, 6, 0, 9],
-     [3, 4, 5, 2, 4, 4, 3, 3, 4, 3, 5, 6, 7, 2, 0]]
+with open('data_2_2_2.txt', 'r') as file:
+    M, N, K = [int(x) for x in file.readline().split()]
 
-# with open('project/test.txt', 'r') as file:
-#     P, N, K = [int(x) for x in file.readline().split()]
-#     r = [int(x) for x in file.readline().split()]
-#     Q = [int(x) for x in file.readline().split()]
-#     d = [[int(i) for i in file.readline().split()] for j in range(2*P+2*N+1)]
+    q = [0]*(2*(M+N)+2*K+1)
+    for index, X in enumerate(file.readline().split()):
+        q[index+M+1] = int(X)
+
+    Q = [0] * (K+1)
+    for index, X in enumerate(file.readline().split()):
+        Q[index + 1] = int(X)
+
+    d = [[int(i) for i in file.readline().split()] for j in range(2*(M+N)+1)]
+
 
 def expand_start(d):
-    n = 2*(N+P)
-    n_expend = 3*(N+P)+K
-    newd = np.zeros((n_expend+1, n_expend+1), dtype=int)
-
+    n = 2*(M+N)
+    n_expand = 2*(M+N)+2*K
+    d_expand = np.zeros((n_expand+1, n_expand+1), dtype=int)
     for i in range(1, n+1):
         for j in range(1, n+1):
-            newd[i][j] = d[i][j]
+            d_expand[i][j] = d[i][j]
 
-    for i in range(n+1, n_expend+1):
+    for i in range(n+1, n_expand+1):
         for j in range(1, n+1):
-            newd[i][j] = d[0][j]
+            d_expand[i][j] = d[0][j]
 
     for i in range(1, n+1):
-        for j in range(n+1, n_expend+1):
-            newd[i][j] = d[i][0]
+        for j in range(n+1, n_expand+1):
+            d_expand[i][j] = d[i][0]
 
-    return newd
+    return d_expand
 
 
 d = expand_start(d)
-# print(d)
-r = [0, 0, 0, 0, 4, 3, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-cap = [0, 10, 10]
+# print(M, N, K)
+# print(q)
+# print(Q)
+# for row in d:
+#     print(row)
 
-solver = pywraplp.Solver.CreateSolver('CBC')
+solver = pywraplp.Solver.CreateSolver('SCIP')
 INF = 10000
 
-# pre-processing
-B = {i for i in range(1, 3*(P+N)+K+1)}
-# print(B)
+B = {i for i in range(1, 2*(M+N)+2*K+1)}
 F1 = set()
 F2 = set()
 F3 = set()
-B2 = set()
+F4 = set()
+F5 = set()
+B_2d = set()
 for i in B:
     for k in range(1, K+1):
-        F1.add((i, k+2*(N+P)))
-        F2.add((k+3*(N+P), i))
+        F1.add((i, k+2*(M+N)))
+        F2.add((k+K+2*(M+N), i))
     F3.add((i, i))
+
+for i in range(M+N+1, 2*(M+N)+1):
+    for k in range(1, K+1):
+        F4.add((k+2*(M+N), i))
+
+for i in range(1, (M+N)+1):
+    for k in range(1, K+1):
+        F5.add((i, k+K+2*(M+N)))
+
 for i in B:
     for j in B:
-        B2.add((i, j))
-A = B2 - F1 - F2 - F3
-# print(A)
-Ap = [[] for i in range(len(A))]  # A+(i)
-Am = [[] for i in range(len(A))]  # A-(i)
+        B_2d.add((i, j))
+A = B_2d - F1 - F2 - F3 - F4 - F5
+# for (i, j) in A:
+#     print((i, j))
+
+Ap = [[] for i in range(len(A))]
+Am = [[] for i in range(len(A))]
 for (i, j) in A:
     Ap[i].append(j)
     Am[j].append(i)
 
-x = {}
+X = {}
+L = {}
+P = {}
+W = {}
+Z = {}
 for k in range(1, K+1):
     for (i, j) in A:
-        x[k, i, j] = solver.IntVar(
-            0, 1, 'x(' + str(k) + ',' + str(i) + ',' + str(j) + ')')
-
-p = {}
-for k in range(1, K+1):
+        X[k, i, j] = solver.IntVar(0, 1, 'X({},{},{})'.format(k, i, j))
     for i in B:
-        p[k, i] = solver.IntVar(0, 1, 'p(' + str(k) + ',' + str(i) + ')')
+        L[k, i] = solver.IntVar(0, INF, 'L({},{})'.format(k, i))
+        P[k, i] = solver.IntVar(0, INF, 'P({},{})'.format(k, i))
+        W[k, i] = solver.IntVar(0, INF, 'W({},{})'.format(k, i))
+        Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
 
-y = {}
-for k in range(1, K+1):
-    for i in B:
-        y[k, i] = solver.IntVar(0, INF, 'y(' + str(k) + ',' + str(i) + ')')
+# leftVar = param when X[k,i,j] = 1
+def ConditionalX_1(leftVar, param, _k, _i, _j):
+    c = solver.Constraint(-INF+int(param), INF)
+    c.SetCoefficient(X[_k, _i, _j], -INF)
+    c.SetCoefficient(leftVar, 1)
 
-z = {}
-for i in B:
-    z[i] = solver.IntVar(0, INF, 'z(' + str(i) + ')')
+    c = solver.Constraint(-INF-int(param), INF)
+    c.SetCoefficient(X[_k, _i, _j], -INF)
+    c.SetCoefficient(leftVar, -1)
+
+# leftVar = rightVar + param when X[k,i,j] = 1
+def ConditionalX_2(leftVar, rightVar, param, _k, _i, _j):
+    c = solver.Constraint(-INF+int(param), INF)
+    c.SetCoefficient(X[_k, _i, _j], -INF)
+    c.SetCoefficient(leftVar, 1)
+    c.SetCoefficient(rightVar, -1)
+
+    c = solver.Constraint(-INF-int(param), INF)
+    c.SetCoefficient(X[_k, _i, _j], -INF)
+    c.SetCoefficient(leftVar, -1)
+    c.SetCoefficient(rightVar, 1)
+
 
 # Constraints
-for i in range(1, 2*(N+P)+1):
+# for i in Ap[8]:
+#     print(i)
+# Cân bằng luồng
+for i in range(1, 2*(M+N)+1):
     c = solver.Constraint(1, 1)
     for k in range(1, K+1):
         for j in Ap[i]:
-            c.SetCoefficient(x[k, i, j], 1)
+            c.SetCoefficient(X[k, i, j], 1)
 
     c = solver.Constraint(1, 1)
     for k in range(1, K+1):
         for j in Am[i]:
-            c.SetCoefficient(x[k, j, i], 1)
+            c.SetCoefficient(X[k, j, i], 1)
 
-
-for i in range(1, 2*(N+P)+1):
+for i in range(1, 2*(M+N)+1):
     for k in range(1, K+1):
         c = solver.Constraint(0, 0)
         for j in Ap[i]:
-            c.SetCoefficient(x[k, i, j], 1)
+            c.SetCoefficient(X[k, i, j], 1)
         for j in Am[i]:
-            c.SetCoefficient(x[k, j, i], -1)
+            c.SetCoefficient(X[k, j, i], -1)
+
+# for k in range(1, K+1):
+#     c = solver.Constraint(1, 1)
+#     for i in Ap[k+2*(M+N)]:
+#         c.SetCoefficient(X[k, k+2*(M+N), i], 1)
+
+#     c = solver.Constraint(1, 1)
+#     for i in Am[k+K+2*(M+N)]:
+#         c.SetCoefficient(X[k, i, k+K+2*(M+N)], 1)
 
 
-# ----------------------------------------------------------------
-for k in range(1, K+1):
-    c = solver.Constraint(1, 1)
-    for j in range(1, 2*(N+P)+1):
-        c.SetCoefficient(x[k, k+2*(N+P), j], 1)
-
-    c = solver.Constraint(1, 1)
-    for j in range(1, 2*(N+P)+1):
-        c.SetCoefficient(x[k, j, k+3*(N+P)], 1)
-
-#
-for k in range(1, K+1):
-    for (i, j) in A:
-        c = solver.Constraint(-INF, INF)
-        c.SetCoefficient(x[k, i, j], -INF)
-        c.SetCoefficient(z[i], 1)
-        c.SetCoefficient(z[j], -1)
-
-
+# Cùng tuyến
 for k in range(1, K+1):
     for (i, j) in A:
-        c = solver.Constraint(-INF, INF)
-        c.SetCoefficient(x[k, i, j], -INF)
-        c.SetCoefficient(z[i], -1)
-        c.SetCoefficient(z[j], 1)
+        ConditionalX_2(Z[j], Z[i], 0, k, i, j)
 
-
-# -------------
+# Nhận trả hàng
 for k in range(1, K+1):
     for (i, j) in A:
-        if j <= P:
-            c = solver.Constraint(-INF+1, INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(p[k, j], 1)
-            c.SetCoefficient(p[k, i], -1)
+        ConditionalX_2(Z[j], Z[i], 0, k, i, j)
+        ConditionalX_2(L[k, j], L[k, i], d[i][j], k, i, j)
+        if j <= M:
+            ConditionalX_2(P[k, j], P[k, i], 1, k, i, j)
+        elif j <= M+N:
+            ConditionalX_2(W[k, j], W[k, i], q[j], k, i, j)
+        elif j <= M+N+M:
+            ConditionalX_2(P[k, j], P[k, i], -1, k, i, j)
+        elif j <= 2*(M+N):
+            ConditionalX_2(W[k, j], W[k, i], -q[j - M - N], k, i, j)
 
-            c = solver.Constraint(-INF-1, INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(p[k, j], -1)
-            c.SetCoefficient(p[k, i], 1)
-        elif j <= P+N:
-            c = solver.Constraint(-INF+r[j], INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(y[k, j], 1)
-            c.SetCoefficient(y[k, i], -1)
+# Điều kiện biến
+for k in range(1,K+1):
+    for i in B:
+        c = solver.Constraint(0, 1)
+        c.SetCoefficient(P[k,i], 1)
 
-            c = solver.Constraint(-INF-r[j], INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(y[k, j], -1)
-            c.SetCoefficient(y[k, i], 1)
-        elif j <= P+N+P:
-            c = solver.Constraint(-INF-1, INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(p[k, j], 1)
-            c.SetCoefficient(p[k, i], -1)
+        c = solver.Constraint(0, Q[k])
+        c.SetCoefficient(W[k,i], 1)
 
-            c = solver.Constraint(-INF+1, INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(p[k, j], -1)
-            c.SetCoefficient(p[k, i], 1)
-        elif j <= (N+P)*2:
-            c = solver.Constraint(-INF-r[j], INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(y[k, j], 1)
-            c.SetCoefficient(y[k, i], -1)
-
-            c = solver.Constraint(-INF+r[j], INF)
-            c.SetCoefficient(x[k, i, j], -INF)
-            c.SetCoefficient(y[k, j], -1)
-            c.SetCoefficient(y[k, i], 1)
-# ----------------------------------------------------------------
+# Xuất phát
 for k in range(1, K+1):
-    c = solver.Constraint(0, cap[k])
-    c.SetCoefficient(y[k, k+3*(N+P)], 1)
+    c = solver.Constraint(0, 0)
+    c.SetCoefficient(P[k, k+2*(M+N)], 1)
 
 for k in range(1, K+1):
     c = solver.Constraint(0, 0)
-    c.SetCoefficient(y[k, k+2*(N+P)], 1)
+    c.SetCoefficient(W[k, k+2*(M+N)], 1)
 
+# Kết thúc
 for k in range(1, K+1):
-    c = solver.Constraint(0, 1)
-    c.SetCoefficient(p[k, k+3*(N+P)], 1)
+    for i in Am[k+K+2*(M+N)]:
+        ConditionalX_1(P[k, i], 0, k, i, k+K+2*(M+N))
+        ConditionalX_1(W[k, i], 0, k, i, k+K+2*(M+N))
 
+# Điều kiện trả hàng/người
 for k in range(1, K+1):
+    for i in range(1, M+N+1):
+        c = solver.Constraint(1, INF)
+        c.SetCoefficient(L[k, i], -1)
+        c.SetCoefficient(L[k, i+(M+N)], 1)
+
+# Cùng tuyến
+for i in range(1, M+N+1):
     c = solver.Constraint(0, 0)
-    c.SetCoefficient(p[k, k+2*(N+P)], 1)
+    c.SetCoefficient(Z[i], -1)
+    c.SetCoefficient(Z[i+(M+N)], 1)
 
-# -------------
 for k in range(1, K+1):
     c = solver.Constraint(k, k)
-    c.SetCoefficient(z[k+2*(N+P)], 1)
+    c.SetCoefficient(Z[k+2*(M+N)], 1)
 
     c = solver.Constraint(k, k)
-    c.SetCoefficient(z[k+3*(N+P)], 1)
+    c.SetCoefficient(Z[k+K+2*(M+N)], 1)
 
 # Objective
 obj = solver.Objective()
 for k in range(1, K+1):
     for (i, j) in A:
-        obj.SetCoefficient(x[k, i, j], int(d[i,j]))
+        obj.SetCoefficient(X[k, i, j], int(d[i][j]))
 
 obj.SetMinimization()
 
@@ -226,19 +223,19 @@ result_status = solver.Solve()
 assert result_status == pywraplp.Solver.OPTIMAL
 
 print('optimal objective value: %.2f' % solver.Objective().Value())
+    
 
 # print route
 for k in range(1, K+1):
-    rs = set()
+    rs = [None] * (2*(N+M+K))
     for (i, j) in A:
-        if x[k, i, j].solution_value() > 0:
-            rs.add((y[k, i].solution_value(), i))
-            rs.add((y[k, j].solution_value(), j))
-    route = []
-    for i in rs:
-        route.append(i)
-    route.sort()
-    trace = []
-    for i in route:
-        trace.append(i[1])
-    print("Vehicle", k, ":", trace)
+        if X[k, i, j].solution_value() > 0:
+            print(i, j, P[k, j].solution_value(), W[k, j].solution_value(), L[k, j].solution_value())
+            rs[i] = j
+    
+
+    print(rs)
+    # index = k + N + M - 1
+    # while(index != k + K + (N+M)):
+    #     print(rs[index])
+    #     index = rs[index]
