@@ -1,8 +1,8 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
 
-with open('data_2_2_2.txt', 'r') as file:
-    M, N, K = [int(x) for x in file.readline().split()]
+with open('data_2_3_2.txt', 'r') as file:
+    M,N, K = [int(x) for x in file.readline().split()]
 
     q = [0]*(2*(M+N)+2*K+1)
     for index, X in enumerate(file.readline().split()):
