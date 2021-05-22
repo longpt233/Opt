@@ -40,6 +40,8 @@ public class HeuristicOnePoint {
     NodeWeightsManager pkMng;
     ArcWeightsManager weightsMng;    	// luu tru trong so tren canh noi giua cac point
 
+    NodeWeightsManager maxWMng;
+    
     HashMap<Point, Integer> mapPoint2ID;
     HashMap<Integer, Point> reverseMapPoint2ID;
 
@@ -131,6 +133,7 @@ public class HeuristicOnePoint {
         mapPoint2ID = new HashMap<Point, Integer>();
         reverseMapPoint2ID = new HashMap< Integer,Point>();
 
+       
         // khoi tao cac diem bat dau va ket thuc cua cac xe (route)
         for (int k = 1; k <= K; k++) {
             // them 2 k diem gia
@@ -158,6 +161,9 @@ public class HeuristicOnePoint {
 
         clMng = new NodeWeightsManager(allPoints);
         pkMng = new NodeWeightsManager(allPoints);
+        
+        maxWMng=new NodeWeightsManager(allPoints);
+        
         weightsMng = new ArcWeightsManager(allPoints);
 
         // set trong so duong di
@@ -171,10 +177,29 @@ public class HeuristicOnePoint {
 
         // set trong so tai moi node (node person hoac pack)
         // rang buoc tra hang voi khach thi throng so am di, khong co lien quan thi trong so = 0
+        
+        for (int i = 0; i < K; i++) {
+            Point s = start.get(i);
+            Point t = end.get(i);
+//            System.out.println(s.toString());
+            maxWMng.setWeight(s, Q[i+1]);
+            maxWMng.setWeight(t, Q[i+1]);
+        }
+
+        
+        
         for (Point p : clientPoints){
             clMng.setWeight(p, 0);
             pkMng.setWeight(p, 0);
             int tmp = mapPoint2ID.get(p);
+//            if(tmp == 0) { 
+//            	
+//            	continue;
+//            }
+////            for (int i=0;i<K;i++) {
+            maxWMng.setWeight(p, 0);
+
+            
             if (tmp <= N) {
                 clMng.setWeight(p, 1);        
             } else if (tmp <= N + M) {
@@ -205,8 +230,10 @@ public class HeuristicOnePoint {
 
         AccumulatedWeightNodesVR personAccum = new AccumulatedWeightNodesVR(XR, clMng);
         AccumulatedWeightNodesVR packAccum = new AccumulatedWeightNodesVR(XR, pkMng);
-        AccumulatedWeightEdgesVR weightAccum = new AccumulatedWeightEdgesVR(XR, weightsMng);
+//        AccumulatedWeightEdgesVR weightAccum = new AccumulatedWeightEdgesVR(XR, weightsMng);
 
+        AccumulatedWeightNodesVR maxAccum = new AccumulatedWeightNodesVR(XR,maxWMng);
+        
         d1 = new IFunctionVR[2 * N + 2 * M + 2 * K + 2];
         d2 = new IFunctionVR[2 * N + 2 * M + 2 * K + 2];
         for (Point p : allPoints) {
@@ -216,14 +243,20 @@ public class HeuristicOnePoint {
 //            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
 
             // trong luong toi da cua xe ma diem p thuoc ve
-            for(int k=0;k<K;k++) {
+//            for(int k=0;k<K;k++) {
                 
-                d1[tmp]=new RouteIndex(XR, p);
+//                d1[tmp]=new RouteIndex(XR, p);
                   // neu p thuoc k 
-                d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
-                CS.post(new Implicate(new Eq(d1[tmp], k),new Leq(d2[tmp], Q[k])));
+            d1[tmp] = new AccumulatedNodeWeightsOnPathVR(maxAccum, p);
+            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+//                CS.post(new Implicate(new Eq(d1[tmp], k),new Leq(d2[tmp], Q[k])));
+            CS.post(new  Leq(d2[tmp], d1[tmp]));
 
-            }
+//            }
+//            
+//            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+//            CS.post(new Leq(d2[tmp],6));
+//            CS.post(new Leq(0, d2[tmp]));
 
             // rang buoc so nguoi
             d2[tmp] = new AccumulatedNodeWeightsOnPathVR(personAccum, p);
@@ -344,12 +377,12 @@ public class HeuristicOnePoint {
 
         A.readData("data.txt");
         double best = Integer.MAX_VALUE;
-        int numberTry = 1000;
+        int numberTry = 600;
         List<VarRoutesVR> resRoutesVR=new ArrayList<>();
         for (int i = 0; i < numberTry; i++) {
             A.mapping();
             A.stateModel2();
-            A.search(1000);
+            A.search(10000);
             double cost = A.getObj().getValue();
             int vio =A.getCS().violations();
 //            System.out.println("cost=" +cost+" violation="+vio );
@@ -362,6 +395,7 @@ public class HeuristicOnePoint {
             }else if (best==cost){
             	resRoutesVR.add(A.getXR());
             }
+            
         }
         System.out.println("\nbest : " + best);
         resRoutesVR.stream().forEach(e-> System.out.println(e.toString()));
