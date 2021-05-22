@@ -10,7 +10,9 @@ K=int(input())
 # const
 min_q= n+m+random.randint(-4, 0)     # min max mỗi điểm nhận/ trả hàng 
 max_q= n+m+random.randint(2, 5) 
+
 min_Q= min_q * int((m/K) + random.randint(-1, 2)) + random.randint(-2,2)  
+min_Q = max(min_Q, min_q)
 max_Q= max_q * int((m/K) + random.randint(1, 3)) + random.randint(-2,2)
 R = n*2+m*2+random.randint(0,5)
 
