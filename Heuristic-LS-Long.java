@@ -1,5 +1,3 @@
-package optimal_schedular;
-
 package test;
 
 
@@ -10,6 +8,7 @@ import localsearch.domainspecific.vehiclerouting.vrp.ConstraintSystemVR;
 import localsearch.domainspecific.vehiclerouting.vrp.IFunctionVR;
 import localsearch.domainspecific.vehiclerouting.vrp.VRManager;
 import localsearch.domainspecific.vehiclerouting.vrp.VarRoutesVR;
+import localsearch.domainspecific.vehiclerouting.vrp.constraints.Implicate;
 import localsearch.domainspecific.vehiclerouting.vrp.constraints.eq.Eq;
 import localsearch.domainspecific.vehiclerouting.vrp.constraints.leq.Leq;
 import localsearch.domainspecific.vehiclerouting.vrp.entities.ArcWeightsManager;
@@ -83,6 +82,7 @@ public class HeuristicOnePoint {
             N = in.nextInt();
             M = in.nextInt();
             K = in.nextInt();
+//            K=1;
 
             q = new int[M + 1];
             Q = new int[K + 1];
@@ -170,7 +170,7 @@ public class HeuristicOnePoint {
         }
 
         // set trong so tai moi node (node person hoac pack)
-        // rang buoc tra hang voi khach thi trong so am di, khong co lien quan thi trong so = 0
+        // rang buoc tra hang voi khach thi throng so am di, khong co lien quan thi trong so = 0
         for (Point p : clientPoints){
             clMng.setWeight(p, 0);
             pkMng.setWeight(p, 0);
@@ -213,14 +213,17 @@ public class HeuristicOnePoint {
             int tmp = mapPoint2ID.get(p);
             if(tmp == 0) continue;
             // rang buoc tai trong
-            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+//            d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
 
             // trong luong toi da cua xe ma diem p thuoc ve
-            // cho nay dang loi nha 
-            int qi= Q[XR.route(p)+1];
-//            CS.post(new Leq(d2[tmp], qi));
-            CS.post(new Leq(d2[tmp], qi));
-//            CS.post(new Leq(0, d2[tmp]));
+            for(int k=0;k<K;k++) {
+                
+                d1[tmp]=new RouteIndex(XR, p);
+                  // neu p thuoc k 
+                d2[tmp] = new AccumulatedNodeWeightsOnPathVR(packAccum, p);
+                CS.post(new Implicate(new Eq(d1[tmp], k),new Leq(d2[tmp], Q[k])));
+
+            }
 
             // rang buoc so nguoi
             d2[tmp] = new AccumulatedNodeWeightsOnPathVR(personAccum, p);
@@ -255,12 +258,12 @@ public class HeuristicOnePoint {
                 CS.post(new Eq(d4[tmp], d4[tmp + N + M]));
             }
         }
-
-        cost = new IFunctionVR[K];
-        for (int k = 1; k <= K; k++) {
-            Point tk = XR.endPoint(k);
-            cost[k - 1] = new AccumulatedEdgeWeightsOnPathVR(weightAccum, tk);
-        }
+        // neu muon in tung cai 
+//        cost = new IFunctionVR[K];
+//        for (int k = 1; k <= K; k++) {
+//            Point tk = XR.endPoint(k);
+//            cost[k - 1] = new AccumulatedEdgeWeightsOnPathVR(weightAccum, tk);
+//        }
 
         obj = new TotalCostVR(XR, weightsMng);// tong khoang cach di chuyen cua K xe (route)
         mgr.close();
@@ -341,21 +344,23 @@ public class HeuristicOnePoint {
 
         A.readData("data.txt");
         double best = Integer.MAX_VALUE;
-        int numberTry = 600;
+        int numberTry = 1000;
         List<VarRoutesVR> resRoutesVR=new ArrayList<>();
         for (int i = 0; i < numberTry; i++) {
             A.mapping();
             A.stateModel2();
-            A.search(100);
+            A.search(1000);
             double cost = A.getObj().getValue();
             int vio =A.getCS().violations();
 //            System.out.println("cost=" +cost+" violation="+vio );
           
             if (best > cost && vio==0) {
-            	
+            	resRoutesVR.clear();
             	System.out.println("update");
                 best = cost;
                 resRoutesVR.add(A.getXR());
+            }else if (best==cost){
+            	resRoutesVR.add(A.getXR());
             }
         }
         System.out.println("\nbest : " + best);
