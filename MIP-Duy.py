@@ -1,7 +1,7 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
 
-with open('data_2_3_2.txt', 'r') as file:
+with open('data.txt', 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
 
     q = [0]*(2*(M+N)+2*K+1)
@@ -212,15 +212,14 @@ print('optimal objective value: %.2f' % solver.Objective().Value())
 
 # print route
 for k in range(1, K+1):
-    print("Vehicle {}:".format(k))
     rs = [None] * (2*(M+N) + 2*K+1)
     if(L[k, 12].solution_value()):
         print(L[k, 12].solution_value()) 
     for (i, j) in A:
         if X[k, i, j].solution_value() > 0:
             rs[i] = j
-            print(i, j, P[k, j].solution_value(),
-                  W[k, j].solution_value(), L[k, j].solution_value())
+            # print(i, j, P[k, j].solution_value(),
+            #       W[k, j].solution_value(), L[k, j].solution_value())
     start = 0
     for i in range(K+2*(M+N), 2*(M+N)-1, -1):
         if(rs[i] != None):
