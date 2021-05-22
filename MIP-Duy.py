@@ -2,7 +2,7 @@ from ortools.linear_solver import pywraplp
 import numpy as np
 
 with open('data_2_3_2.txt', 'r') as file:
-    M,N, K = [int(x) for x in file.readline().split()]
+    M, N, K = [int(x) for x in file.readline().split()]
 
     q = [0]*(2*(M+N)+2*K+1)
     for index, X in enumerate(file.readline().split()):
@@ -35,9 +35,9 @@ def expand_start(d):
 
 
 d = expand_start(d)
-# print(M, N, K)
-# print(q)
-# print(Q)
+print(M, N, K)
+print(q)
+print(Q)
 # for row in d:
 #     print(row)
 
@@ -88,36 +88,26 @@ for k in range(1, K+1):
         X[k, i, j] = solver.IntVar(0, 1, 'X({},{},{})'.format(k, i, j))
     for i in B:
         L[k, i] = solver.IntVar(0, INF, 'L({},{})'.format(k, i))
-        P[k, i] = solver.IntVar(0, INF, 'P({},{})'.format(k, i))
-        W[k, i] = solver.IntVar(0, INF, 'W({},{})'.format(k, i))
+        P[k, i] = solver.IntVar(0, 1, 'P({},{})'.format(k, i))
+        W[k, i] = solver.IntVar(0, Q[k], 'W({},{})'.format(k, i))
         Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
 
-# leftVar = param when X[k,i,j] = 1
-def ConditionalX_1(leftVar, param, _k, _i, _j):
-    c = solver.Constraint(-INF+int(param), INF)
-    c.SetCoefficient(X[_k, _i, _j], -INF)
-    c.SetCoefficient(leftVar, 1)
-
-    c = solver.Constraint(-INF-int(param), INF)
-    c.SetCoefficient(X[_k, _i, _j], -INF)
-    c.SetCoefficient(leftVar, -1)
-
 # leftVar = rightVar + param when X[k,i,j] = 1
-def ConditionalX_2(leftVar, rightVar, param, _k, _i, _j):
+def ConditionalX(leftVar, rightVar, param, _k, _i, _j):
     c = solver.Constraint(-INF+int(param), INF)
     c.SetCoefficient(X[_k, _i, _j], -INF)
     c.SetCoefficient(leftVar, 1)
-    c.SetCoefficient(rightVar, -1)
+    if(rightVar):
+        c.SetCoefficient(rightVar, -1)
 
     c = solver.Constraint(-INF-int(param), INF)
     c.SetCoefficient(X[_k, _i, _j], -INF)
     c.SetCoefficient(leftVar, -1)
-    c.SetCoefficient(rightVar, 1)
-
+    if(rightVar):
+        c.SetCoefficient(rightVar, 1)
 
 # Constraints
-# for i in Ap[8]:
-#     print(i)
+
 # Cân bằng luồng
 for i in range(1, 2*(M+N)+1):
     c = solver.Constraint(1, 1)
@@ -138,63 +128,60 @@ for i in range(1, 2*(M+N)+1):
         for j in Am[i]:
             c.SetCoefficient(X[k, j, i], -1)
 
-# for k in range(1, K+1):
-#     c = solver.Constraint(1, 1)
-#     for i in Ap[k+2*(M+N)]:
-#         c.SetCoefficient(X[k, k+2*(M+N), i], 1)
-
-#     c = solver.Constraint(1, 1)
-#     for i in Am[k+K+2*(M+N)]:
-#         c.SetCoefficient(X[k, i, k+K+2*(M+N)], 1)
-
 
 # Cùng tuyến
 for k in range(1, K+1):
     for (i, j) in A:
-        ConditionalX_2(Z[j], Z[i], 0, k, i, j)
+        ConditionalX(Z[j], Z[i], 0, k, i, j)
 
 # Nhận trả hàng
 for k in range(1, K+1):
     for (i, j) in A:
-        ConditionalX_2(Z[j], Z[i], 0, k, i, j)
-        ConditionalX_2(L[k, j], L[k, i], d[i][j], k, i, j)
+        ConditionalX(Z[j], Z[i], 0, k, i, j)
+        ConditionalX(L[k, j], L[k, i], d[i][j], k, i, j)
         if j <= M:
-            ConditionalX_2(P[k, j], P[k, i], 1, k, i, j)
+            ConditionalX(P[k, j], P[k, i], 1, k, i, j)
+            ConditionalX(W[k, j], W[k, i], 0, k, i, j)
         elif j <= M+N:
-            ConditionalX_2(W[k, j], W[k, i], q[j], k, i, j)
+            ConditionalX(P[k, j], P[k, i], 0, k, i, j)
+            ConditionalX(W[k, j], W[k, i], q[j], k, i, j)
         elif j <= M+N+M:
-            ConditionalX_2(P[k, j], P[k, i], -1, k, i, j)
+            ConditionalX(P[k, j], P[k, i], -1, k, i, j)
+            ConditionalX(W[k, j], W[k, i], 0, k, i, j)
         elif j <= 2*(M+N):
-            ConditionalX_2(W[k, j], W[k, i], -q[j - M - N], k, i, j)
+            ConditionalX(P[k, j], P[k, i], 0, k, i, j)
+            ConditionalX(W[k, j], W[k, i], -q[j - M - N], k, i, j)
 
-# Điều kiện biến
-for k in range(1,K+1):
+# Điều kiện tải trọng
+for k in range(1, K+1):
     for i in B:
         c = solver.Constraint(0, 1)
-        c.SetCoefficient(P[k,i], 1)
+        c.SetCoefficient(P[k, i], 1)
 
         c = solver.Constraint(0, Q[k])
-        c.SetCoefficient(W[k,i], 1)
+        c.SetCoefficient(W[k, i], 1)
 
 # Xuất phát
 for k in range(1, K+1):
     c = solver.Constraint(0, 0)
+    c.SetCoefficient(L[k, k+2*(M+N)], 1)
+
+    c = solver.Constraint(0, 0)
     c.SetCoefficient(P[k, k+2*(M+N)], 1)
 
-for k in range(1, K+1):
     c = solver.Constraint(0, 0)
     c.SetCoefficient(W[k, k+2*(M+N)], 1)
 
 # Kết thúc
 for k in range(1, K+1):
     for i in Am[k+K+2*(M+N)]:
-        ConditionalX_1(P[k, i], 0, k, i, k+K+2*(M+N))
-        ConditionalX_1(W[k, i], 0, k, i, k+K+2*(M+N))
+        ConditionalX(P[k, i], None, 0, k, i, k+K+2*(M+N))
+        ConditionalX(W[k, i], None, 0, k, i, k+K+2*(M+N))
 
 # Điều kiện trả hàng/người
 for k in range(1, K+1):
     for i in range(1, M+N+1):
-        c = solver.Constraint(1, INF)
+        c = solver.Constraint(int(d[i][i+(M+N)]), INF)
         c.SetCoefficient(L[k, i], -1)
         c.SetCoefficient(L[k, i+(M+N)], 1)
 
@@ -216,26 +203,35 @@ obj = solver.Objective()
 for k in range(1, K+1):
     for (i, j) in A:
         obj.SetCoefficient(X[k, i, j], int(d[i][j]))
-
 obj.SetMinimization()
 
 result_status = solver.Solve()
 assert result_status == pywraplp.Solver.OPTIMAL
 
 print('optimal objective value: %.2f' % solver.Objective().Value())
-    
 
 # print route
 for k in range(1, K+1):
-    rs = [None] * (2*(N+M+K))
+    print("Vehicle {}:".format(k))
+    rs = [None] * (2*(M+N) + 2*K+1)
+    if(L[k, 12].solution_value()):
+        print(L[k, 12].solution_value()) 
     for (i, j) in A:
         if X[k, i, j].solution_value() > 0:
-            print(i, j, P[k, j].solution_value(), W[k, j].solution_value(), L[k, j].solution_value())
             rs[i] = j
-    
+            print(i, j, P[k, j].solution_value(),
+                  W[k, j].solution_value(), L[k, j].solution_value())
+    start = 0
+    for i in range(K+2*(M+N), 2*(M+N)-1, -1):
+        if(rs[i] != None):
+            start = i
+            end = i+K
+            break
 
-    print(rs)
-    # index = k + N + M - 1
-    # while(index != k + K + (N+M)):
-    #     print(rs[index])
-    #     index = rs[index]
+    print('0 -> ', end="")
+    if(rs[start]):
+        cur_index = rs[start]
+        while(rs[cur_index]):
+            print('{} -> '.format(cur_index), end="")
+            cur_index = rs[cur_index]
+    print('0')
