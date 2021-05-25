@@ -8,13 +8,13 @@ m=int(input())
 K=int(input())
 
 # const
-min_q= n+m+random.randint(-4, 0)     # min max mỗi điểm nhận/ trả hàng 
-max_q= n+m+random.randint(2, 5) 
+min_q= int((n+m)*random.uniform(1, 1.2))  # min max mỗi điểm nhận/ trả hàng 
+max_q= int((n+m)*random.uniform(1.8, 2.5)) 
 
-min_Q= min_q * int((m/K) + random.randint(-1, 2)) + random.randint(-2,2)  
+min_Q= min_q * int((m/K) + random.randint(-1, 1)) + random.randint(-2,2)  
 min_Q = max(min_Q, min_q)
 max_Q= max_q * int((m/K) + random.randint(1, 3)) + random.randint(-2,2)
-R = n*2+m*2+random.randint(0,5)
+R = n*2+m*2+random.randint(1,5)
 
 def distance(point1, point2):
 	return int(np.linalg.norm(point1-point2))
