@@ -38,12 +38,6 @@ def expend_start(number, d):
 
 N, D = expend_start(nm2, d)
 
-# small test
-# n = 3
-# m = 3
-# nm2 = 2*n+2*m
-# N = nm2+ 2*k +1
-
 q = [0 for i in range(N)]
 for i in range(n+1, n+m+1):
     q[i] = q_data[i-n-1]
@@ -61,10 +55,9 @@ P4 = [i for i in range(n+m+n+1, nm2+1)]
 S = [i for i in range(nm2+1, nm2+k+1)]
 E = [i for i in range(nm2+k+1, N)]
 All = [i for i in range(N)]
-    
+print(n,m,k)
     
 model = cp_model.CpModel()
-# x = [model.NewIntVar(1, N-1, 'x') for i in range(N)]
 x1 = [[model.NewBoolVar('x1[{},{}]'.format(j,i)) for i in range(N)] for j in range(nm2+k+1)] # x[i][i] == 1 <=> có đường từ i ->j
 
 l = [model.NewIntVar(0, 1000, 'l[{}]'.format(i)) for i in range(N)]
@@ -81,25 +74,6 @@ for s in range(nm2+1, nm2+k+1):
     model.Add(mark[s] == s-nm2)   # điểm đầu và điểm cuối cùng tuyến
     model.Add(mark[s+k] == s-nm2)
 
-# DK 1 đường đến i và 1 đường từ i
-# for i in range(1,nm2+k+1):
-#     model.Add(x1[i][i] == 0)
-#     model.Add(sum([x1[i][j] for j in range(1,N)]) == 1)
-        
-# dest = [i for i in range(1,nm2+1)]
-# for i in range(k):
-#     dest.append(nm2+k+i+1)
-# for i in dest:
-#     model.Add(sum([x1[j][i] for j in range(1,nm2+k+1)]) == 1)
-# #để tăng tốc
-# for i in range(nm2+1, nm2+k+1):
-#     for j in range(n+m+1, N-k):
-#         # model.Add(x1[i][j] == 0)
-#         model.AddElement(j, x1[i],0)
-#     for j in range(1, nm2+k+1):
-#         # model.Add(x1[j][i] == 0)
-#         model.AddElement(i, x1[j],0)
-        
 # tap cac diem co the di tư diem i
 A = [[] for i in range(nm2+k+1)]
 for i in range(1,nm2+k+1):
@@ -107,11 +81,11 @@ for i in range(1,nm2+k+1):
         for j in P2+P4+[i+n+m]:
             A[i].append(j)
     elif i <= n+m:
-        for j in P1+P2+P3+P4+E:
+        for j in P1+P2+P3+P4:
             if i != j:
                 A[i].append(j)
     elif i <= n+m+n:
-        for j in P1+P2+P4:
+        for j in P1+P2+P4+E:
             if j != i-n-m:
                 A[i].append(j)
     elif i <= nm2:
@@ -121,9 +95,6 @@ for i in range(1,nm2+k+1):
     else :
         for j in P1+P2+[i+k]:
             A[i].append(j)
-    
-# for i in range(nm2+k+1):
-#     print(i, A[i])
 
 for i in range(nm2+k+1):
     for j in set(All) - set(A[i]):
@@ -136,19 +107,15 @@ for i in range(1,N):
     if i not in S:
         model.Add(sum([x1[j][i] for j in range(1,nm2+k+1)]) == 1)  
         
-
+        
 # các ĐK khi có đường từ i -> j
 for i in range(1,nm2+k+1): 
     for j in A[i]:
-    # for j in range(1,N):
-    #     if i == j:
-    #         continue
         model.Add(mark[j] == mark[i]).OnlyEnforceIf(x1[i][j])
         model.Add(max_w[j] == max_w[i]).OnlyEnforceIf(x1[i][j])
         model.Add(l[j] == l[i] + D[i][j]).OnlyEnforceIf(x1[i][j])
         model.Add(p[j] == p[i] + client[j]).OnlyEnforceIf(x1[i][j])
         model.Add(w[j] == w[i] + q[j]).OnlyEnforceIf(x1[i][j])
-
 
 # ĐK trả hàng đúng tuyến
 for i in range(1, n+m+1):
@@ -165,22 +132,11 @@ for i in range(n+1,n+m+1):
 
 model.Minimize(sum([l[i] for i in range(nm2+k+1, N)]))
 
-# for i in range(1,nm2+k+1):
-#     model.AddDecisionStrategy(x1[i], cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
-    
 solver = cp_model.CpSolver()
-# solver.parameters.search_branching = cp_model.FIXED_SEARCH
-
 status = solver.Solve(model)
-
 
 if status == cp_model.OPTIMAL:
     print('objective: ', solver.ObjectiveValue())
-    # for i in range(1, nm2+k+1):
-    #     for j in range(1,N):
-    #         print(solver.Value(x1[i][j]), end=' ')
-    #     print()
-
     # for l in range(1, k+1):
     #     for i in range(1, nm2+k+1):
     #         for j in range(1,N):
@@ -199,6 +155,7 @@ if status == cp_model.OPTIMAL:
                         print(t1+k)
                         go = False
                     break
+
 else :
     print('not found')
     
