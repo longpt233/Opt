@@ -4,7 +4,7 @@ import time
 
 start_time = time.time()
 
-with open('data_3_4_2.txt', 'r') as file:
+with open('data_4_4_2.txt', 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
     # Người
     p = [0]*(2*(M+N)+2*K+1)
@@ -70,9 +70,9 @@ for (i, j) in B_2d:
         F2.add((i, j))
 # Điểm trả khách
 for (i, j) in B_2d:
-    if (i in range(M+N+1, 2*M+N+1)) and \
-        (j == i-N-M or (j in range(M+1, M+N+1)) or \
-        (j in range(2*M+N+1, 2*(M+N)+1)) or (j in range(2*(M+N)+K+1, 2*(M+N)+2*K+1))):
+    if (i in range(M+N+1, 2*M+N+1)) \
+        and (j != i-N-M or (j in range(M+1, M+N+1)) \
+        or (j in range(2*M+N+1, 2*(M+N)+1)) or (j in range(2*(M+N)+K+1, 2*(M+N)+2*K+1))):
         F3.add((i, j))
 # Điểm trả hàng
 for (i, j) in B_2d:
@@ -87,6 +87,7 @@ for i in B:
     F6.add((i, i))
 A = F1.union(F2).union(F3).union(F4).union(F5)
 A -= F6
+print(A)
 
 Ap = [[] for i in range(len(A))]
 Am = [[] for i in range(len(A))]
@@ -97,22 +98,22 @@ for (i, j) in A:
 X, L, P, W, Z = {}, {}, {}, {}, {}
 for k in range(1, K+1):
     for (i, j) in A:
-        X[k, i, j] = solver.IntVar(0, 1, 'X({},{},{})'.format(k, i, j))
+        X[i, j] = solver.IntVar(0, 1, 'X({},{})'.format(i, j))
     for i in B:
-        L[k, i] = solver.IntVar(0, INF, 'L({},{})'.format(k, i))
-        P[k, i] = solver.IntVar(0, 1, 'P({},{})'.format(k, i))
+        L[i] = solver.IntVar(0, INF, 'L({})'.format(i))
+        P[i] = solver.IntVar(0, 1, 'P({})'.format(i))
         W[k, i] = solver.IntVar(0, Q[k], 'W({},{})'.format(k, i))
         Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
 
-# leftVar = rightVar + param when X[k,i,j] = 1
+# leftVar = rightVar + param when X[i,j] = 1
 def ConditionalX(leftVar, rightVar, param, k, i, j):
     c = solver.Constraint(-INF+int(param), INF)
-    c.SetCoefficient(X[k, i, j], -INF)
+    c.SetCoefficient(X[i, j], -INF)
     c.SetCoefficient(leftVar, 1)
     c.SetCoefficient(rightVar, -1)
 
     c = solver.Constraint(-INF-int(param), INF)
-    c.SetCoefficient(X[k, i, j], -INF)
+    c.SetCoefficient(X[i, j], -INF)
     c.SetCoefficient(leftVar, -1)
     c.SetCoefficient(rightVar, 1)
 
@@ -121,30 +122,12 @@ def ConditionalX(leftVar, rightVar, param, k, i, j):
 # Cân bằng luồng
 for i in range(1, 2*(M+N)+1):
     c = solver.Constraint(1, 1)
-    for k in range(1, K+1):
-        for j in Ap[i]:
-            c.SetCoefficient(X[k, i, j], 1)
+    for j in Ap[i]:
+        c.SetCoefficient(X[i, j], 1)
 
     c = solver.Constraint(1, 1)
-    for k in range(1, K+1):
-        for j in Am[i]:
-            c.SetCoefficient(X[k, j, i], 1)
-
-for i in range(1, 2*(M+N)+1):
-    for k in range(1, K+1):
-        c = solver.Constraint(0, 0)
-        for j in Ap[i]:
-            c.SetCoefficient(X[k, i, j], 1)
-        for j in Am[i]:
-            c.SetCoefficient(X[k, j, i], -1)
-
-# for j in range(1, 2*(M+N)):
-#     c = solver.Constraint(1, 1)
-#     for k in range(1, K+1):    
-#         c.SetCoefficient(X[k, k+2*(M+N), j], 1)
-#     c = solver.Constraint(1, 1)
-#     for k in range(1, K+1):    
-#         c.SetCoefficient(X[k, j, k+2*(M+N)+K], 1)
+    for j in Am[i]:
+        c.SetCoefficient(X[j, i], 1)
 
 # Cùng tuyến
 for i in range(1, M+N+1):
@@ -152,53 +135,52 @@ for i in range(1, M+N+1):
     c.SetCoefficient(Z[i], -1)
     c.SetCoefficient(Z[i+(M+N)], 1)
 
+# Tồn tại đường đi
+for k in range(1, K+1):
+    for (i, j) in A:
+        ConditionalX(Z[j], Z[i], 0, k, i, j)
+        ConditionalX(L[j], L[i], d[i][j], k, i, j)
+        ConditionalX(P[j], P[i], p[j], k, i, j)
+        ConditionalX(W[k, j], W[k, i], q[j], k, i, j)
+
 # Điều kiện trả hàng/người
 for k in range(1, K+1):
     for i in range(1, M+N+1):
         c = solver.Constraint(int(d[i][i+(M+N)]), INF)
-        c.SetCoefficient(L[k, i], -1)
-        c.SetCoefficient(L[k, i+(M+N)], 1)
+        c.SetCoefficient(L[i], -1)
+        c.SetCoefficient(L[i+(M+N)], 1)
 
 # Điều kiện tải trọng
 for k in range(1, K+1):
     for i in B:
         c = solver.Constraint(0, 1)
-        c.SetCoefficient(P[k, i], 1)
+        c.SetCoefficient(P[i], 1)
 
         c = solver.Constraint(0, Q[k])
         c.SetCoefficient(W[k, i], 1)
 
-# Tồn tại đường đi
-for k in range(1, K+1):
-    for (i, j) in A:
-        ConditionalX(Z[j], Z[i], 0, k, i, j)
-        ConditionalX(L[k, j], L[k, i], d[i][j], k, i, j)
-        ConditionalX(P[k, j], P[k, i], p[j], k, i, j)
-        ConditionalX(W[k, j], W[k, i], q[j], k, i, j)
-
 # Khởi tạo
 for k in range(1, K+1):
     c = solver.Constraint(0, 0)
-    c.SetCoefficient(L[k, k+2*(M+N)], 1)
+    c.SetCoefficient(L[2*(M+N)+k], 1)
 
     c = solver.Constraint(0, 0)
-    c.SetCoefficient(P[k, k+2*(M+N)], 1)
+    c.SetCoefficient(P[2*(M+N)+k], 1)
 
     c = solver.Constraint(0, 0)
-    c.SetCoefficient(W[k, k+2*(M+N)], 1)
+    c.SetCoefficient(W[k, 2*(M+N)+k], 1)
 
     c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[k+2*(M+N)], 1)
+    c.SetCoefficient(Z[2*(M+N)+k], 1)
 
     c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[k+K+2*(M+N)], 1)
-
+    c.SetCoefficient(Z[2*(M+N)+k+K], 1)
 
 # Objective
 obj = solver.Objective()
 for k in range(1, K+1):
     for (i, j) in A:
-        obj.SetCoefficient(X[k, i, j], int(d[i][j]))
+        obj.SetCoefficient(X[i, j], int(d[i][j]))
 obj.SetMinimization()
 
 result_status = solver.Solve()
@@ -211,10 +193,10 @@ for k in range(1, K+1):
     print("Vehicle {}:".format(k))
     rs = [None] * (2*(M+N) + 2*K+1)
     for (i, j) in A:
-        if X[k, i, j].solution_value() > 0:
+        if X[i, j].solution_value() > 0 and Z[i].solution_value() == k:
             rs[i] = j
-            # print(i, j, P[k, j].solution_value(),
-            #       W[k, j].solution_value(), L[k, j].solution_value())
+            print(i, j, P[j].solution_value(),
+                  W[k, j].solution_value(), L[j].solution_value())
     start = 0
     for i in range(K+2*(M+N), 2*(M+N)-1, -1):
         if(rs[i] != None):
@@ -222,11 +204,13 @@ for k in range(1, K+1):
             end = i+K
             break
 
-    print('0 -> ', end="")
     if(rs[start]):
+        print('{} -> '.format(2*(M+N)+k), end="")
         cur_index = rs[start]
         while(rs[cur_index]):
             print('{} -> '.format(cur_index), end="")
             cur_index = rs[cur_index]
-    print('0')
+        print('{}'.format(2*(M+N)+k+K))
+    else:
+        print('{} -> {}'.format(2*(M+N)+k, 2*(M+N)+k+K))
 print(time.time() - start_time)
