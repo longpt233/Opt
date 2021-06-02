@@ -1,10 +1,15 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
 import time
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-f", "--file", help="directory of file", type=str)
+args = parser.parse_args()
 
 start_time = time.time()
 
-with open('data_4_4_2.txt', 'r') as file:
+with open(args.file, 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
     # Người
     p = [0]*(2*(M+N)+2*K+1)
@@ -106,7 +111,7 @@ for k in range(1, K+1):
         Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
 
 # leftVar = rightVar + param when X[i,j] = 1
-def ConditionalX(leftVar, rightVar, param, k, i, j):
+def ConditionalX(leftVar, rightVar, param, i, j):
     c = solver.Constraint(-INF+int(param), INF)
     c.SetCoefficient(X[i, j], -INF)
     c.SetCoefficient(leftVar, 1)
@@ -118,46 +123,6 @@ def ConditionalX(leftVar, rightVar, param, k, i, j):
     c.SetCoefficient(rightVar, 1)
 
 ### Constraints
-
-# Cân bằng luồng
-for i in range(1, 2*(M+N)+1):
-    c = solver.Constraint(1, 1)
-    for j in Ap[i]:
-        c.SetCoefficient(X[i, j], 1)
-
-    c = solver.Constraint(1, 1)
-    for j in Am[i]:
-        c.SetCoefficient(X[j, i], 1)
-
-# Cùng tuyến
-for i in range(1, M+N+1):
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(Z[i], -1)
-    c.SetCoefficient(Z[i+(M+N)], 1)
-
-# Tồn tại đường đi
-for k in range(1, K+1):
-    for (i, j) in A:
-        ConditionalX(Z[j], Z[i], 0, k, i, j)
-        ConditionalX(L[j], L[i], d[i][j], k, i, j)
-        ConditionalX(P[j], P[i], p[j], k, i, j)
-        ConditionalX(W[k, j], W[k, i], q[j], k, i, j)
-
-# Điều kiện trả hàng/người
-for k in range(1, K+1):
-    for i in range(1, M+N+1):
-        c = solver.Constraint(int(d[i][i+(M+N)]), INF)
-        c.SetCoefficient(L[i], -1)
-        c.SetCoefficient(L[i+(M+N)], 1)
-
-# Điều kiện tải trọng
-for k in range(1, K+1):
-    for i in B:
-        c = solver.Constraint(0, 1)
-        c.SetCoefficient(P[i], 1)
-
-        c = solver.Constraint(0, Q[k])
-        c.SetCoefficient(W[k, i], 1)
 
 # Khởi tạo
 for k in range(1, K+1):
@@ -175,6 +140,48 @@ for k in range(1, K+1):
 
     c = solver.Constraint(k, k)
     c.SetCoefficient(Z[2*(M+N)+k+K], 1)
+
+# Cân bằng luồng
+for i in range(1, 2*(M+N)+1):
+    c = solver.Constraint(1, 1)
+    for j in Ap[i]:
+        c.SetCoefficient(X[i, j], 1)
+
+    c = solver.Constraint(1, 1)
+    for j in Am[i]:
+        c.SetCoefficient(X[j, i], 1)
+
+# Nhận và trả hàng cùng xe
+for i in range(1, M+N+1):
+    c = solver.Constraint(0, 0)
+    c.SetCoefficient(Z[i], -1)
+    c.SetCoefficient(Z[i+(M+N)], 1)
+
+# Tồn tại đường đi
+for k in range(1, K+1):
+    for (i, j) in A:
+        ConditionalX(W[k, j], W[k, i], q[j], i, j)
+
+for (i, j) in A:
+    ConditionalX(Z[j], Z[i], 0, i, j)
+    ConditionalX(L[j], L[i], d[i][j], i, j)
+    ConditionalX(P[j], P[i], p[j], i, j)
+
+# Điều kiện điểm trả sau điểm đón
+for i in range(1, M+N+1):
+    c = solver.Constraint(int(d[i][i+(M+N)]), INF)
+    c.SetCoefficient(L[i], -1)
+    c.SetCoefficient(L[i+(M+N)], 1)
+
+# Điều kiện tải trọng
+for i in B:
+        c = solver.Constraint(0, 1)
+        c.SetCoefficient(P[i], 1)
+
+for k in range(1, K+1):
+    for i in B:
+        c = solver.Constraint(0, Q[k])
+        c.SetCoefficient(W[k, i], 1)
 
 # Objective
 obj = solver.Objective()
