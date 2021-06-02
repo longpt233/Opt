@@ -51,6 +51,8 @@ print(M, N, K)
 print(p)
 print(q)
 print(Q)
+K = 1
+Q[1] = max(Q)
 # for row in d:
 #     print(row)
 
@@ -124,22 +126,7 @@ def ConditionalX(leftVar, rightVar, param, i, j):
 
 ### Constraints
 
-# Khởi tạo
-for k in range(1, K+1):
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(L[2*(M+N)+k], 1)
 
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(P[2*(M+N)+k], 1)
-
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(W[k, 2*(M+N)+k], 1)
-
-    c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[2*(M+N)+k], 1)
-
-    c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[2*(M+N)+k+K], 1)
 
 # Cân bằng luồng
 for i in range(1, 2*(M+N)+1):
@@ -182,6 +169,23 @@ for k in range(1, K+1):
     for i in B:
         c = solver.Constraint(0, Q[k])
         c.SetCoefficient(W[k, i], 1)
+
+# Khởi tạo
+for k in range(1, K+1):
+    c = solver.Constraint(0, 0)
+    c.SetCoefficient(L[2*(M+N)+k], 1)
+
+    c = solver.Constraint(0, 0)
+    c.SetCoefficient(P[2*(M+N)+k], 1)
+
+    c = solver.Constraint(0, 0)
+    c.SetCoefficient(W[k, 2*(M+N)+k], 1)
+
+    c = solver.Constraint(k, k)
+    c.SetCoefficient(Z[2*(M+N)+k], 1)
+
+    c = solver.Constraint(k, k)
+    c.SetCoefficient(Z[2*(M+N)+k+K], 1)
 
 # Objective
 obj = solver.Objective()
