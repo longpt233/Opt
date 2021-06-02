@@ -4,7 +4,7 @@ import time
 
 start_time = time.time()
 
-with open('data_2_3_2.txt', 'r') as file:
+with open('data_3_4_2.txt', 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
     # Người
     p = [0]*(2*(M+N)+2*K+1)
@@ -90,7 +90,7 @@ for i in B:
     F6.add((i, i))
 A = F1.union(F2).union(F3).union(F4).union(F5)
 A -= F6
-print(A)
+# print(A)
 
 Ap = [[] for i in range(len(A))]
 Am = [[] for i in range(len(A))]
@@ -98,27 +98,18 @@ for (i, j) in A:
     Ap[i].append(j)
     Am[j].append(i)
 
-X, L, P, W, Z = {}, {}, {}, {}, {}
+X, L, P, W, Z, W_max = {}, {}, {}, {}, {}, {}
+for (i, j) in A:
+    X[i, j] = solver.BoolVar('X({},{})'.format(i, j))
+for i in B:
+    L[i] = solver.IntVar(0, INF, 'L({})'.format(i))
+    P[i] = solver.BoolVar('P({})'.format(i))
+    Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
+    W_max[i] = solver.IntVar(0, INF, 'W_max({})'.format(i))
+
 for k in range(1, K+1):
-    for (i, j) in A:
-        X[i, j] = solver.IntVar(0, 1, 'X({},{})'.format(i, j))
     for i in B:
-        L[i] = solver.IntVar(0, INF, 'L({})'.format(i))
-        P[i] = solver.IntVar(0, 1, 'P({})'.format(i))
-        W[k, i] = solver.IntVar(0, Q[k], 'W({},{})'.format(k, i))
-        Z[i] = solver.IntVar(1, K, 'Z({})'.format(i))
-
-# leftVar = rightVar + param when X[i,j] = 1
-def ConditionalX(leftVar, rightVar, param, i, j):
-    c = solver.Constraint(-INF+int(param), INF)
-    c.SetCoefficient(X[i, j], -INF)
-    c.SetCoefficient(leftVar, 1)
-    c.SetCoefficient(rightVar, -1)
-
-    c = solver.Constraint(-INF-int(param), INF)
-    c.SetCoefficient(X[i, j], -INF)
-    c.SetCoefficient(leftVar, -1)
-    c.SetCoefficient(rightVar, 1)
+        W[i] = solver.IntVar(0, INF, 'W({})'.format(i))
 
 ### Constraints
 # Cân bằng luồng
@@ -131,58 +122,62 @@ for i in range(1, 2*(M+N)+1):
     for j in Am[i]:
         c.SetCoefficient(X[j, i], 1)
 
+for i in range(2*(M+N)+1, 2*(M+N)+K+1):
+    c = solver.Constraint(1, 1)
+    for j in Ap[i]:
+        c.SetCoefficient(X[i, j], 1)
+    
+    c = solver.Constraint(1, 1)
+    for j in Am[i+K]:
+        c.SetCoefficient(X[j, i+K], 1)
+
+    c = solver.Constraint(0, 0)
+    for j in Am[i]:
+        c.SetCoefficient(X[j, i], 1)
+
+    c = solver.Constraint(0, 0)
+    for j in Ap[i+K]:
+        c.SetCoefficient(X[i+K, j], 1)
+
+
 # Cùng tuyến
 for i in range(1, M+N+1):
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(Z[i], -1)
-    c.SetCoefficient(Z[i+(M+N)], 1)
+    solver.Add(Z[i+(M+N)] == Z[i])
 
 # Tồn tại đường đi
-for k in range(1, K+1):
-    for (i, j) in A:
-        ConditionalX(Z[j], Z[i], 0, i, j)
-        ConditionalX(L[j], L[i], d[i][j], i, j)
-        ConditionalX(P[j], P[i], p[j], i, j)
-        ConditionalX(W[k, j], W[k, i], q[j], i, j)
-
+for (i, j) in A:
+    solver.Add(INF*(1-X[i,j]) + Z[j] >= Z[i])
+    solver.Add(INF*(1-X[i,j]) + Z[i] >= Z[j])
+    solver.Add(INF*(1-X[i,j]) + W_max[j] >= W_max[i])
+    solver.Add(INF*(1-X[i,j]) + W_max[i] >= W_max[j])
+    solver.Add(INF*(1-X[i,j]) + L[j] >= L[i] + int(d[i][j]))
+    solver.Add(INF*(1-X[i,j]) + L[i] + int(d[i][j]) >= L[j])
+    solver.Add(INF*(1-X[i,j]) + P[j] >= P[i] + p[j])
+    solver.Add(INF*(1-X[i,j]) + P[i] + p[j] >= P[j])
+    solver.Add(INF*(1-X[i,j]) + W[j] >= W[i] + q[j])
+    solver.Add(INF*(1-X[i,j]) + W[i] + q[j] >= W[j])
+    
 # Điều kiện trả hàng/người
-for k in range(1, K+1):
-    for i in range(1, M+N+1):
-        c = solver.Constraint(int(d[i][i+(M+N)]), INF)
-        c.SetCoefficient(L[i], -1)
-        c.SetCoefficient(L[i+(M+N)], 1)
+for i in range(1, M+N+1):
+    solver.Add(L[i+(M+N)] >= L[i] + int(d[i][i+(M+N)]))
 
 # Điều kiện tải trọng
-for k in range(1, K+1):
-    for i in B:
-        c = solver.Constraint(0, 1)
-        c.SetCoefficient(P[i], 1)
-
-        c = solver.Constraint(0, Q[k])
-        c.SetCoefficient(W[k, i], 1)
+for i in range(1, 2*(M+N)):
+    solver.Add(W[i] <= W_max[i])
 
 # Khởi tạo
 for k in range(1, K+1):
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(L[2*(M+N)+k], 1)
-
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(P[2*(M+N)+k], 1)
-
-    c = solver.Constraint(0, 0)
-    c.SetCoefficient(W[k, 2*(M+N)+k], 1)
-
-    c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[2*(M+N)+k], 1)
-
-    c = solver.Constraint(k, k)
-    c.SetCoefficient(Z[2*(M+N)+k+K], 1)
+    solver.Add(L[2*(M+N)+k] == 0)
+    solver.Add(P[2*(M+N)+k] == 0)
+    solver.Add(W[2*(M+N)+k] == 0)
+    solver.Add(W_max[2*(M+N)+k] == Q[k])
+    solver.Add(Z[2*(M+N)+k] == k)
+    solver.Add(Z[2*(M+N)+K+k] == k)
 
 # Objective
 obj = solver.Objective()
-for k in range(1, K+1):
-    for (i, j) in A:
-        obj.SetCoefficient(X[i, j], int(d[i][j]))
+for (i, j) in A:
+    obj.SetCoefficient(X[i, j], int(d[i][j]))
 obj.SetMinimization()
 
 result_status = solver.Solve()
@@ -198,7 +193,7 @@ for k in range(1, K+1):
         if X[i, j].solution_value() > 0 and Z[i].solution_value() == k:
             rs[i] = j
             print(i, j, P[j].solution_value(),
-                  W[k, j].solution_value(), L[j].solution_value())
+                  W[j].solution_value(), L[j].solution_value())
     start = 0
     for i in range(K+2*(M+N), 2*(M+N)-1, -1):
         if(rs[i] != None):
