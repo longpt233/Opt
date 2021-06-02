@@ -6,18 +6,18 @@ start_time = time.time()
 
 with open('data_3_4_2.txt', 'r') as file:
     M, N, K = [int(x) for x in file.readline().split()]
-    # Người
+    # Số hành khách
     p = [0]*(2*(M+N)+2*K+1)
     for i in range(1, M+1):
         p[i] = 1
     for i in range(M+N+1, M+N+1+M):
         p[i] = -1
-    # Hàng
+    # Trọng lượng hàng
     q = [0]*(2*(M+N)+2*K+1)
     for index, X in enumerate(file.readline().split()):
         q[index+M+1] = int(X)
         q[index+2*M+N+1] = -int(X)
-    # Max hàng
+    # Trọng tải xe
     Q = [0] * (K+1)
     for index, X in enumerate(file.readline().split()):
         Q[index + 1] = int(X)
@@ -58,7 +58,6 @@ INF = 10000
 B = {i for i in range(1, 2*(M+N)+2*K+1)}
 
 B_2d, F1, F2, F3, F4, F5, F6 = set(), set(), set(), set(), set(), set(), set()
-# Đi tại chỗ
 for i in B:
     for j in B:
         B_2d.add((i, j))
@@ -139,8 +138,7 @@ for i in range(2*(M+N)+1, 2*(M+N)+K+1):
     for j in Ap[i+K]:
         c.SetCoefficient(X[i+K, j], 1)
 
-
-# Cùng tuyến
+# Điểm đón và điểm trả cùng xe
 for i in range(1, M+N+1):
     solver.Add(Z[i+(M+N)] == Z[i])
 
@@ -157,7 +155,7 @@ for (i, j) in A:
     solver.Add(INF*(1-X[i,j]) + W[j] >= W[i] + q[j])
     solver.Add(INF*(1-X[i,j]) + W[i] + q[j] >= W[j])
     
-# Điều kiện trả hàng/người
+# Điều kiện điểm trả sau điểm đón
 for i in range(1, M+N+1):
     solver.Add(L[i+(M+N)] >= L[i] + int(d[i][i+(M+N)]))
 
